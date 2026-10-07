@@ -75,7 +75,7 @@ int main(int argc, char* argv[])
 
 			fscanf(programm_file, "%lg", &value);
 
-			fprintf(objective_file, "%d %d\n", PUSH, value);
+			fprintf(objective_file, "%d %lg\n", PUSH, value);
 
 			continue;
 		}

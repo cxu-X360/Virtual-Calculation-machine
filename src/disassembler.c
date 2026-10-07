@@ -78,7 +78,7 @@ int main(int argc, char* argv[])
 	 			double value = NAN;
 
 				fscanf(objective_file, "%lg", &value);
-				fprintf(programm_file, "%s %d\n", OPCODES_names[cur_command], value);
+				fprintf(programm_file, "%s %lg\n", OPCODES_names[cur_command], value);
 
 				break;	
 
