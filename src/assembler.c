@@ -21,6 +21,9 @@ enum ERRORS
 	TRANSLATION_ERR = -2,
 };
 
+const  MAX_COMMAND_NAME_LEN = 16;
+
+
 char* str_lower(char* str)
 {
 	int i = 0;
@@ -57,7 +60,7 @@ int main(int argc, char* argv[])
 		return WRONG_INP_PARAMS;
 	}
 
-	char cur_command[16] = {};
+	char cur_command[MAX_COMMAND_NAME_LEN] = {};
 
 	size_t line = 0;
 
