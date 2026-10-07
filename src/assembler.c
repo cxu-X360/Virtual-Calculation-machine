@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include <assert.h>
+#include <math.h>
 
 enum OPCODES
 {
@@ -71,9 +71,9 @@ int main(int argc, char* argv[])
 
 		if (!strcmp(cur_command, "push"))
 		{
-			double value = 0; 
+			double value = NAN; 
 
-			fscanf(programm_file, "%d", &value);
+			fscanf(programm_file, "%lg", &value);
 
 			fprintf(objective_file, "%d %d\n", PUSH, value);
 

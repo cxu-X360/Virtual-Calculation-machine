@@ -13,7 +13,7 @@ enum ERRORS
 typedef struct _command
 {
 	char name[16];
-	
+
 	int code;
 
 	int length;

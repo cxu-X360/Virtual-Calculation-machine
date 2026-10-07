@@ -1,3 +1,4 @@
 test.c
 *.exe
 !assler.exe
+!disassler.exe
