@@ -155,8 +155,6 @@ int stack_pop(struct Stack* stk, double* value)
 
 int stack_destroy(struct Stack* stk)
 {
-	CHECK_ERROR(stk)
-
 	#ifdef STKDEBUG
 
 		stk->file_name = "";

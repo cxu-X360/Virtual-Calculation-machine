@@ -1,13 +1,6 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <math.h>
-#include <assert.h>
-#include <sys\stat.h>
-#include <fcntl.h>
-#include <unistd.h>	
+#include "proccesor.h"
 
-#include "..\includes\Stack\stack.h"
+
 
 enum ERRORS
 {
@@ -17,32 +10,6 @@ enum ERRORS
 	NULL_PTR_ERROR = -4,
 	READ_FILE_ERROR = -5,
 };
-
-enum OPCODES
-{
-	PUSH = 1,
-	ADD = 2,
-	SUB = 3,
-	MULT = 4,
-	DIV = 5,
-	OUT = 6, 
-	HLT = 0,
-};
-
-
-
-const size_t START_CAPACITY = 32;
-const size_t MAX_SIZE_CODE_SEGMENT = 1024; //TODO dynamic resize
-
-#include "commands.c"
-
-int (*commands_arr[])(struct Stack*, double arg) = { hatl, //0
-										 push, //1 - push (many args)
-										 add,  //2
-										 sub,  //3
-										 mult, //4
-			 							 divis,  //5
-										 out}; //6
 
 int text_beater(char** text_ptr, char* string_pointers[]) //Разделение всего текста  на строки и занесение в массив указателей на строки string_pointers[]
 {
@@ -143,7 +110,7 @@ size_t read_programm(const char* programm_file_name, double* code_segment)
 
 	while (instruction_size =  sscanf(line_pointers[line], "%d %lg", &opcode, &arg) > 0)
 	{
-		//printf("line = <%s>, instruction_size = <%d>, ", line_pointers[line], instruction_size);
+		//printf("line = <->, instruction_size = <%d>, ", instruction_size);
 		code_segment[i] = (double) opcode;
 		//printf("opcode = <%d>(%lg), ", opcode, code_segment[i]);
 		i++;
@@ -175,17 +142,16 @@ void print_array(double* arr, size_t size)
 	puts("\b]\n");
 }
 
-int run_programm(struct Stack* stk, double* code_segment, size_t code_segment_size)
+int run_programm(SPU* spu)
 {
-	size_t prog_counter = 0;
 	int opcode = -1;
 	double arg = NAN;
 
-	print_array(code_segment, 12);
+	print_array(spu->code_segment, spu->code_segment_size);
 
-	while(prog_counter < code_segment_size)
+	while(spu->prog_counter < spu->code_segment_size)
 	{
-		opcode = (int) code_segment[prog_counter];
+		opcode = (int) spu->code_segment[spu->prog_counter];
 		arg = NAN;
 
 		switch(opcode)
@@ -194,21 +160,54 @@ int run_programm(struct Stack* stk, double* code_segment, size_t code_segment_si
 				printf("BREAK!!\n");
 				return 0;
 
-			case PUSH: 
-				prog_counter++;
-				arg = code_segment[prog_counter];
+			case PUSH: case PUSHR: case POP: case JMP...JAE: case CALL: 
+				spu->prog_counter++;
+				arg = spu->code_segment[spu->prog_counter];
 		}
 
 		printf("opcode = <%d>, arg = <%lg>\n", opcode, arg);
 
-		commands_arr[opcode](stk, arg);
+		commands_arr[opcode](spu, arg);
 
-		prog_counter+=1;
+		spu->prog_counter++;
 
-		print_stack(stk);
+		print_stack(&spu->main_stack);
 	}
+
+	fprintf(stderr, "Code segment END has been destined and programm wasn't stop by \"HLT\" command\n");
 }
 
+int spu_init(SPU* spu, const char* object_file_name)
+{
+	struct Stack main_stack = {};
+	stack_init(&main_stack, START_CAPACITY);
+	spu->main_stack = main_stack;
+
+	spu->code_segment = (double*) calloc(MAX_SIZE_CODE_SEGMENT, sizeof(double)); //TODO dynamic realloc
+	spu->code_segment_size = read_programm(object_file_name, spu->code_segment);
+	spu->prog_counter = 0;
+	
+	double _regs[NUM_REGISTERS] = {};
+	memcpy(spu->registers, _regs, NUM_REGISTERS);
+
+	struct Stack return_stack = {};
+	stack_init(&return_stack, START_CAPACITY);
+	spu->return_stack = return_stack;
+}
+
+int spu_destroy(SPU* spu)
+{
+	stack_destroy(&(spu->main_stack));
+
+	free(spu->code_segment);
+	spu->code_segment_size = 0;
+	spu->prog_counter = 0;
+
+	double _regs[NUM_REGISTERS] = {};
+	memcpy(spu->registers, _regs, NUM_REGISTERS);
+
+	stack_destroy(&(spu->return_stack));
+}
 
 int main(int argc, char* argv[])
 {
@@ -218,17 +217,14 @@ int main(int argc, char* argv[])
 		return WRONG_INPUT_PARAMS;
 	}
 
-	double* code_segment = (double*) calloc(MAX_SIZE_CODE_SEGMENT, sizeof(double)); //TODO dynamic realloc
+	const char* object_file_name = argv[1];
 
-	struct Stack main_stack = {};
-	stack_init(&main_stack, START_CAPACITY);
+	SPU main_spu = {};
+	spu_init(&main_spu, object_file_name);
 
-	size_t code_segment_size = read_programm(argv[1], code_segment);
+	run_programm(&main_spu);
 
-	run_programm(&main_stack, code_segment, code_segment_size);
-
-	stack_destroy(&main_stack);
-	free(code_segment);
+	spu_destroy(&main_spu);
 
 	FUNC_END
 	return 0;
