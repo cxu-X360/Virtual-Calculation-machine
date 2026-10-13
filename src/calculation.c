@@ -3,10 +3,11 @@
 #include <stdlib.h>
 #include <math.h>
 #include <assert.h>
+#include <sys\stat.h>
+#include <fcntl.h>
+#include <unistd.h>	
 
-#include "..\includes\stack.h"
-
-#include "commands.c"
+#include "..\includes\Stack\stack.h"
 
 enum ERRORS
 {
@@ -14,6 +15,7 @@ enum ERRORS
 	RUN_PROG_ERROR = -2,
 	UNKNOWN_COMMAND = -3,
 	NULL_PTR_ERROR = -4,
+	READ_FILE_ERROR = -5,
 };
 
 enum OPCODES
@@ -27,172 +29,207 @@ enum OPCODES
 	HLT = 0,
 };
 
-typedef struct _command
+
+
+const size_t START_CAPACITY = 32;
+const size_t MAX_SIZE_CODE_SEGMENT = 1024; //TODO dynamic resize
+
+#include "commands.c"
+
+int (*commands_arr[])(struct Stack*, double arg) = { hatl, //0
+										 push, //1 - push (many args)
+										 add,  //2
+										 sub,  //3
+										 mult, //4
+			 							 divis,  //5
+										 out}; //6
+
+int text_beater(char** text_ptr, char* string_pointers[]) //Разделение всего текста  на строки и занесение в массив указателей на строки string_pointers[]
 {
-	int code;
+	FUNC_START
 
-	int arg_count;
+	size_t pos = 0;
 
-	double arg;
+	size_t i = 0;
 
-	struct _command* next_command;
+	char* text = *text_ptr;
 
-} Command;
+	//printf("text = <%s>\n", text);
 
-#define MAX_PROGRAMM_SIZE  5 * 1024
+	string_pointers[0] = text;
 
+	while (text[pos] != '\0' && text[pos] != EOF) //Идем до конца текста
+	{
+		//printf("char in text in pos <%d> = <%c>\n", pos, text[pos]);
+		if (text[pos] == '\n')
+		{
+			i++;
+			string_pointers[i] = &(text[pos]);
 
-const int START_CAPACITY = 32;
+			//printf("PTR added to the str_ptrs into i = %d\n", i);
+		}
+		pos++;
+	}
 
+	FUNC_END
+	return i + 1;
+}
 
-int (*commands_arr[])(struct Stack*) = {hatl, //0
-															 NULL, //1 - push (many args)
-															 add,  //2
-															 sub,  //3
-															 mult, //4
-															 divis,  //5
-															 out}; //6
-
-int read_programm_file(const char* programm_file_name, char** buffer)
+size_t count_lines(char* text)
 {
-	FILE* programm_file = fopen(programm_file_name, "r");
+	FUNC_START
+	size_t i = 1;
 
-	if (programm_file == NULL)
+ 	char* cur = strchr(text, '\n');
+
+  	while (cur != NULL) 
+  	{
+    	i++;
+    	cur = strchr(cur + 1, '\n');
+  	}
+
+  	return i;
+}
+
+int read_programm_file(const char* programm_file_name, char** programm_text)
+{
+	FUNC_START
+
+	int programm_file_descriptor = open(programm_file_name, O_BINARY);
+
+	if (programm_file_descriptor < 0)
 	{
 		fprintf(stderr, "!! Wrong file name, please enter a whole path to the file\n");
 		return WRONG_INPUT_PARAMS;
 	}
 
-	*buffer = (char*) calloc(MAX_PROGRAMM_SIZE + 1, sizeof(char)); //TODO нормальный размер каллока
+	char cur_char = '\0';
+	struct stat programm_file_info = {};
 
-	fread(*buffer, sizeof(char), MAX_PROGRAMM_SIZE, programm_file);
+	if (stat(programm_file_name, &programm_file_info)) return -fprintf(stderr, "cant get stat of file\n");
 
-	fclose(programm_file);
+	*programm_text = (char*) calloc(((size_t) programm_file_info.st_size  + 2), sizeof(char));
+
+	read(programm_file_descriptor, *programm_text, programm_file_info.st_size);
+	(*programm_text)[programm_file_info.st_size] = '\0';
+	//printf("just after read() text = <%s>\n", *programm_text);
+	close(programm_file_descriptor);
+
+	FUNC_END
+
+	return count_lines(*programm_text);
 }
 
-
-
-int read_programm(const char* programm_file_name, Command* programm_list)
+size_t read_programm(const char* programm_file_name, double* code_segment)
 {
-	char* buffer = NULL;
+	char* programm_text = NULL;
+	size_t lines_num = 0;
 
-	read_programm_file(programm_file_name, &buffer);
+	if (lines_num = read_programm_file(programm_file_name, &programm_text) < 0) {fprintf(stderr, "READ file error\n"); return READ_FILE_ERROR;}   
 
-	printf("buffer = <%s>\n", buffer);
+	char** line_pointers = (char**) calloc(lines_num + 3, sizeof(char*));
 
+	text_beater(&programm_text, line_pointers);
 
-	int code = -1;
-	int arg_count = 0;
+	//printf("buffer = <%s>\n", programm_text);
+
+	int opcode = -1;
 	double arg = NAN;
-
 	size_t line = 0;
+	size_t i = 0;
+	int instruction_size = 0;
 
-	char* _buffer = buffer;
+	//printf("code_segment = [");
 
-	int offset = 0;
+	while (instruction_size =  sscanf(line_pointers[line], "%d %lg", &opcode, &arg) > 0)
+	{
+		//printf("line = <%s>, instruction_size = <%d>, ", line_pointers[line], instruction_size);
+		code_segment[i] = (double) opcode;
+		//printf("opcode = <%d>(%lg), ", opcode, code_segment[i]);
+		i++;
 
-	while (sscanf(_buffer, "%d%n", &code, &offset) > 1)
-	{	
-		_buffer += offset;
-
-		line++;
-
-		if (code == PUSH)
+		if (opcode == 1)
 		{
-			arg_count = 1;
-
-			sscanf(buffer, "%lg ", &arg);
+			code_segment[i] = arg;
+			//printf("arg = <%lg>(%lg), ", arg, code_segment[i]);
+			i++;
 		}
 
-		printf("line = %zu, Command = {code = %d, arg_count = %d, args = %lg}\n", line, code, arg_count, arg);
-
-		switch (code)
-		{
-			case PUSH: case ADD: case SUB: case MULT: case DIV: case OUT: case HLT:
-
-				Command* new_command = (Command*) malloc(sizeof(Command));
-
-				if (new_command == NULL) {fprintf(stderr, "ERROR while malloc new programm\n"); return -4;}
-
-				*new_command = (Command) {.code = code, .arg_count = arg_count, .arg = arg, .next_command = programm_list};
-
-				programm_list = new_command;
-
-				break;
-
-			default:
-
-				fprintf(stderr, "Calculation ERROR - Unknowm Command in %s:%zu\n", programm_file_name, line);
-
-				return UNKNOWN_COMMAND;
-		}		
-
-
+		line++;
 	}
+	puts("]\n");
 
-	free(buffer);
+	free(line_pointers);
+	free(programm_text);
 
-	return 0;
-
-
+	return i;
 }
 
-
-int run_programm(struct Stack* stk, Command* prog_lst)
+void print_array(double* arr, size_t size)
 {
-	if (prog_lst == NULL) return 0;
-
-	if (prog_lst->arg_count == 0) 
-	{	
-		commands_arr[prog_lst->code](stk);
-
-		return run_programm(stk, prog_lst->next_command);
-	}
-
-	if (prog_lst->arg_count == 1)
+	putchar('[');
+	for (int i = 0; i < size; i++)
 	{
-		stack_push(stk, prog_lst->arg);
-
-		return run_programm(stk, prog_lst->next_command);
+		printf("<%d>,", (int) arr[i]);
 	}
-
-	fprintf(stderr, "ERROR in run_programm\n");
-
-	return -2;
+	puts("\b]\n");
 }
 
-int free_programm(Command* list)
+int run_programm(struct Stack* stk, double* code_segment, size_t code_segment_size)
 {
-	if (list == NULL) return 0;
+	size_t prog_counter = 0;
+	int opcode = -1;
+	double arg = NAN;
 
-	Command* next_command = list->next_command;
+	print_array(code_segment, 12);
 
-	free(list);
+	while(prog_counter < code_segment_size)
+	{
+		opcode = (int) code_segment[prog_counter];
+		arg = NAN;
 
-	return free_programm(next_command);
+		switch(opcode)
+		{
+			case HLT:
+				printf("BREAK!!\n");
+				return 0;
+
+			case PUSH: 
+				prog_counter++;
+				arg = code_segment[prog_counter];
+		}
+
+		printf("opcode = <%d>, arg = <%lg>\n", opcode, arg);
+
+		commands_arr[opcode](stk, arg);
+
+		prog_counter+=1;
+
+		print_stack(stk);
+	}
 }
+
 
 int main(int argc, char* argv[])
 {
 	if (argc != 2)
 	{
-		fprintf(stderr, "!! Wrong input parametrs. Expected: <assler \"path-to-file\"\n");
+		fprintf(stderr, "!! Wrong input parametrs. Expected: <calc \"path-to-objectfile\" \n");
 		return WRONG_INPUT_PARAMS;
 	}
 
-
-
-	Command* programm_list = NULL;
+	double* code_segment = (double*) calloc(MAX_SIZE_CODE_SEGMENT, sizeof(double)); //TODO dynamic realloc
 
 	struct Stack main_stack = {};
 	stack_init(&main_stack, START_CAPACITY);
 
-	read_programm(argv[1], programm_list);
+	size_t code_segment_size = read_programm(argv[1], code_segment);
 
-	run_programm(&main_stack, programm_list);
+	run_programm(&main_stack, code_segment, code_segment_size);
 
 	stack_destroy(&main_stack);
-	free_programm(programm_list);
+	free(code_segment);
 
+	FUNC_END
 	return 0;
 }

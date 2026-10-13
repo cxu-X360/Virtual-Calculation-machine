@@ -1,4 +1,3 @@
 test.c
 *.exe
-!assler.exe
-!disassler.exe
+_create_calc.bat
