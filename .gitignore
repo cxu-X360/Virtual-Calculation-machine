@@ -4,7 +4,7 @@ test.c
 _create_calc.bat
 _create_assler.bat
 
-.txt
+*.txt
 !test_obj.txt
 !test_comments.txt
 !test_comments.clc
