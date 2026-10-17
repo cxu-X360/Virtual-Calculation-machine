@@ -95,7 +95,7 @@ int resize_down(struct Stack* stk)
 
 	if (stk->size < stk->capacity / 8)
 	{
-		printf("HUY\n");
+		//printf("HUY\n");
 		stk->data = realloc(stk->data, ((stk->capacity > 5) ? (stk->capacity /= 2) : 5) * sizeof(double));
 		#ifdef CANARY
 			stk->data[0] = START_DATA_CAN_VAL;
@@ -155,6 +155,8 @@ int stack_pop(struct Stack* stk, double* value)
 
 int stack_destroy(struct Stack* stk)
 {
+	FUNC_START
+
 	#ifdef STKDEBUG
 
 		stk->file_name = "";

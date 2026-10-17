@@ -1,3 +1,4 @@
+
 #include "stack.h"
 
 void clear_buffer()  //очищает стандартный буффер ввода до \n включительно вызовами getchar()

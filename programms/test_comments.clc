@@ -1,0 +1,13 @@
+push 20    #we pushed 20 in stach
+push 20    #we pushed 20 agained
+sqrt       #take a square root from stack highest el (20)
+sqrt
+add
+
+push 50
+mult
+sqr
+out        #print answer in console
+hlt
+
+

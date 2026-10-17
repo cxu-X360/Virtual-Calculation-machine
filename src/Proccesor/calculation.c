@@ -1,7 +1,5 @@
 #include "proccesor.h"
 
-
-
 enum ERRORS
 {
 	WRONG_INPUT_PARAMS = -1,
@@ -10,6 +8,8 @@ enum ERRORS
 	NULL_PTR_ERROR = -4,
 	READ_FILE_ERROR = -5,
 };
+
+
 
 int text_beater(char** text_ptr, char* string_pointers[]) //Разделение всего текста  на строки и занесение в массив указателей на строки string_pointers[]
 {
@@ -92,7 +92,7 @@ size_t read_programm(const char* programm_file_name, double* code_segment)
 	char* programm_text = NULL;
 	size_t lines_num = 0;
 
-	if (lines_num = read_programm_file(programm_file_name, &programm_text) < 0) {fprintf(stderr, "READ file error\n"); return READ_FILE_ERROR;}   
+	if ((lines_num = read_programm_file(programm_file_name, &programm_text)) < 0) {fprintf(stderr, "READ file error\n"); return READ_FILE_ERROR;}   
 
 	char** line_pointers = (char**) calloc(lines_num + 3, sizeof(char*));
 
@@ -108,21 +108,23 @@ size_t read_programm(const char* programm_file_name, double* code_segment)
 
 	//printf("code_segment = [");
 
-	while (instruction_size =  sscanf(line_pointers[line], "%d %lg", &opcode, &arg) > 0)
+	while ((instruction_size =  sscanf(line_pointers[line], "%d %lg", &opcode, &arg)) > 0)
 	{
-		//printf("line = <->, instruction_size = <%d>, ", instruction_size);
+		printf("\nline = <->, instruction_size = <%d>, ", instruction_size);
 		code_segment[i] = (double) opcode;
-		//printf("opcode = <%d>(%lg), ", opcode, code_segment[i]);
+		printf("opcode = <%d>(%lg), ", opcode, code_segment[i]);
 		i++;
 
-		if (opcode == 1)
+		switch (opcode)
 		{
-			code_segment[i] = arg;
-			//printf("arg = <%lg>(%lg), ", arg, code_segment[i]);
-			i++;
+			case COM_WITH_ARGS_FOR_SWITCH:
+				code_segment[i] = arg;
+				printf("arg = <%lg>(%lg), ", arg, code_segment[i]);
+				i++;
 		}
 
 		line++;
+		printf("next line = <%s>, ", line_pointers[line]);
 	}
 	puts("]\n");
 
@@ -137,9 +139,10 @@ void print_array(double* arr, size_t size)
 	putchar('[');
 	for (int i = 0; i < size; i++)
 	{
-		printf("<%d>,", (int) arr[i]);
+		printf("<% 2d>,", (int) arr[i]);
 	}
-	puts("\b]\n");
+	puts("\b] ");
+	putchar('\n');
 }
 
 int run_programm(SPU* spu)
@@ -147,10 +150,11 @@ int run_programm(SPU* spu)
 	int opcode = -1;
 	double arg = NAN;
 
-	print_array(spu->code_segment, spu->code_segment_size);
+	print_array(spu->code_segment, spu->code_segment_size);	
 
 	while(spu->prog_counter < spu->code_segment_size)
 	{
+		//printf("prog_counter = <%zu>", spu->prog_counter);
 		opcode = (int) spu->code_segment[spu->prog_counter];
 		arg = NAN;
 
@@ -160,18 +164,18 @@ int run_programm(SPU* spu)
 				printf("BREAK!!\n");
 				return 0;
 
-			case PUSH: case PUSHR: case POP: case JMP...JAE: case CALL: 
+			case COM_WITH_ARGS_FOR_SWITCH: 
 				spu->prog_counter++;
 				arg = spu->code_segment[spu->prog_counter];
 		}
 
-		printf("opcode = <%d>, arg = <%lg>\n", opcode, arg);
-
-		commands_arr[opcode](spu, arg);
+		//printf("opcode = <%d>, arg = <%lg>\n", opcode, arg);
 
 		spu->prog_counter++;
 
-		print_stack(&spu->main_stack);
+		commands_arr[opcode](spu, arg);
+
+		//print_stack(&spu->main_stack);
 	}
 
 	fprintf(stderr, "Code segment END has been destined and programm wasn't stop by \"HLT\" command\n");
@@ -197,6 +201,8 @@ int spu_init(SPU* spu, const char* object_file_name)
 
 int spu_destroy(SPU* spu)
 {
+	FUNC_START
+
 	stack_destroy(&(spu->main_stack));
 
 	free(spu->code_segment);
@@ -211,13 +217,16 @@ int spu_destroy(SPU* spu)
 
 int main(int argc, char* argv[])
 {
-	if (argc != 2)
+	if (argc > 2)
 	{
 		fprintf(stderr, "!! Wrong input parametrs. Expected: <calc \"path-to-objectfile\" \n");
 		return WRONG_INPUT_PARAMS;
 	}
 
-	const char* object_file_name = argv[1];
+	const char* object_file_name = NULL;
+
+	if (argc == 2) object_file_name = argv[1];
+	if (argc == 1) scanf("%s", object_file_name);
 
 	SPU main_spu = {};
 	spu_init(&main_spu, object_file_name);

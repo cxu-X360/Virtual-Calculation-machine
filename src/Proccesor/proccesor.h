@@ -1,3 +1,6 @@
+#ifndef PROCCESOR_H
+#define PROCCESOR_H
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -7,7 +10,7 @@
 #include <fcntl.h>
 #include <unistd.h>	
 
-#include "..\includes\Stack\stack.h"
+#include "..\..\includes\Stack\stack.h"
 
 
 enum OPCODES
@@ -37,9 +40,15 @@ enum OPCODES
 	RET = 18,
 
 	IN = 19,
-	OUT = 20, 
+	OUT = 20,
 
+	PUSHM = 21,
+	POPM = 22,
+
+	OPCODES_COUNT,
 };
+
+#define COM_WITH_ARGS_FOR_SWITCH PUSH: case PUSHR: case POP: case JMP...JAE: case CALL
 
 #define NUM_REGISTERS 6
 
@@ -90,3 +99,4 @@ int (*commands_arr[])(SPU* spu, double arg) = {
 									     };   
 
 
+#endif

@@ -1,3 +1,11 @@
 test.c
 *.exe
+
 _create_calc.bat
+_create_assler.bat
+
+.txt
+!test_obj.txt
+!test_comments.txt
+!test_comments.clc
+!test_prog.clc
