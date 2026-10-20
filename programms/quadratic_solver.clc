@@ -1,0 +1,17 @@
+in    #read values
+push 12
+push 45
+
+pop R1  #move them to reg-s
+pop R2
+pop R3
+
+pushr R1
+pushr R3
+add
+
+pushr R2
+sub
+
+out
+hlt

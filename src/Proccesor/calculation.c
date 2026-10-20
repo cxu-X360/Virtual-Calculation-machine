@@ -1,5 +1,5 @@
 #include "proccesor.h"
-
+ 
 enum ERRORS
 {
 	WRONG_INPUT_PARAMS = -1,
@@ -8,7 +8,6 @@ enum ERRORS
 	NULL_PTR_ERROR = -4,
 	READ_FILE_ERROR = -5,
 };
-
 
 
 int text_beater(char** text_ptr, char* string_pointers[]) //Разделение всего текста  на строки и занесение в массив указателей на строки string_pointers[]
@@ -110,23 +109,23 @@ size_t read_programm(const char* programm_file_name, double* code_segment)
 
 	while ((instruction_size =  sscanf(line_pointers[line], "%d %lg", &opcode, &arg)) > 0)
 	{
-		printf("\nline = <->, instruction_size = <%d>, ", instruction_size);
+		//printf("\nline = <->, instruction_size = <%d>, ", instruction_size);
 		code_segment[i] = (double) opcode;
-		printf("opcode = <%d>(%lg), ", opcode, code_segment[i]);
+		//printf("opcode = <%d>(%lg), ", opcode, code_segment[i]);
 		i++;
 
 		switch (opcode)
 		{
 			case COM_WITH_ARGS_FOR_SWITCH:
 				code_segment[i] = arg;
-				printf("arg = <%lg>(%lg), ", arg, code_segment[i]);
+				//printf("arg = <%lg>(%lg), ", arg, code_segment[i]);
 				i++;
 		}
 
 		line++;
-		printf("next line = <%s>, ", line_pointers[line]);
+		//printf("next line = <%s>, ", line_pointers[line]);
 	}
-	puts("]\n");
+	//puts("]\n");
 
 	free(line_pointers);
 	free(programm_text);

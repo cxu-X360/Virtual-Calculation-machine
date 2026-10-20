@@ -22,9 +22,6 @@ enum ERRORS
 									return opcode;\
 								}
 
-const char* opcode_names[OPCODES_COUNT] = {};
-
-
 typedef struct
 {
 	char* label_table;
@@ -118,7 +115,7 @@ int read_programm_file(const char* programm_file_name, char** programm_text)
 	int programm_file_descriptor = open(programm_file_name, O_BINARY);
 	if (programm_file_descriptor < 0)
 	{
-		fprintf(stderr, "!! Wrong file name, please enter a whole path to the file\n");
+		fprintf(stderr, "!! Wrong programm file name, please enter a whole path to the file\n");
 		return WRONG_INP_PARAMS;
 	}
 
@@ -158,6 +155,7 @@ int check_command(char* command_name)
 
 	CHECK(HLT)
 	CHECK(PUSH)
+	CHECK(PUSHR)
 	CHECK(POP)
 	CHECK(ADD)
 	CHECK(SUB)
@@ -201,13 +199,23 @@ int check_arg(AContext* ctx, LContext* line_ctx)
 			case PUSHR: case POP:
 				int reg_num = -1;
 
-				if (sscanf(line_ctx->pointer_in_line, " R%[0-5]%n", &reg_num, &offset) != 1)
+				if (sscanf(line_ctx->pointer_in_line, " R%d%n", &reg_num, &offset) != 1)
 				{
-					fprintf(stderr, "WROND REG_NUM <%d> in line %zu\n", reg_num, line_ctx->line); 
+					fprintf(stderr, "NO REG_NUM in line %zu\n", line_ctx->line); 
 					return TRANSLATION_ERR;
 				}
 
-				line_ctx->arg = (double) reg_num;
+				switch(reg_num)
+				{
+					case 0 ... 5: break;
+					default:
+						fprintf(stderr, "WRONG REG_NUM <%d> in line %zu\n", reg_num, line_ctx->line);
+						return TRANSLATION_ERR;
+				}
+
+				//line_ctx->arg = (double) reg_num;
+				printf("arg = <%lg>\n", line_ctx->arg);
+				printf("reg_num = <%d>\n", reg_num);
 				break;
 
 			case JMP...CALL:
@@ -313,7 +321,7 @@ int translation(AContext* ctx)
 			return TRANSLATION_ERR;
 		}
 
-		//printf("arg = <%lg>\n", line_ctx.arg);
+		
 
 		ctx->obj_text_pointer += sprintf(ctx->obj_text_pointer, (isnan(line_ctx.arg)) ? "%d\n" : "%d %lg\n" , line_ctx.opcode, line_ctx.arg);
 		//printf("obj_text = <%s>\n", ctx->obj_text);
@@ -331,7 +339,7 @@ int write_objective_file(const char* objective_file_name, char* obj_text)
 	FILE* obj_file = fopen(objective_file_name, "w");
 	if (!obj_file)
 	{
-		fprintf(stderr, "!! Wrong file name, please enter a whole path to the file\n");
+		fprintf(stderr, "!! Wrong objectivefile name, please enter a whole path to the file\n");
 		return WRONG_INP_PARAMS;
 	}
 
@@ -361,14 +369,18 @@ int main(int argc, char* argv[])
 {
 	FUNC_START
 
-	if (argc != 3)
+
+
+	if (argc > 3)
 	{
 		fprintf(stderr, "!! Wrong input parametrs. Expected: <assler \"path to programm file\" \"path to objective file\"\n");
 		return WRONG_INP_PARAMS;
 	}
 
 	const char* programm_file_name = argv[1];
-	const char* objective_file_name = argv[2];
+
+	
+	char* objective_file_name = (argc == 2) ? strcat(argv[1], "txt") : argv[2];
 
 	char* programm_text = NULL;
 
@@ -401,7 +413,7 @@ int main(int argc, char* argv[])
 
 	free_context(&context);
 
-	system(argv[2]);
+	system(objective_file_name);
 	FUNC_END
 
 	return 0;

@@ -226,7 +226,8 @@ int input(SPU* spu, double empty_arg)
 {
 	printf("INPUT:: ");
 
-	double val = scanf("%lg");
+	double val = NAN;
+	scanf("%lg", &val);
 
 	stack_push(&spu->main_stack, val);
 
