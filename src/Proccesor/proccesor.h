@@ -48,6 +48,8 @@ enum OPCODES
 	OPCODES_COUNT,
 };
 
+//ГЕнерировать файл текстовйый
+
 #define COM_WITH_ARGS_FOR_SWITCH PUSH: case PUSHR: case POP: case JMP...JAE: case CALL
 
 #define NUM_REGISTERS 6

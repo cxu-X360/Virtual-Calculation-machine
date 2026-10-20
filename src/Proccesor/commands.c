@@ -205,7 +205,7 @@ int jump_more(SPU* spu, double adress)
 
 int call(SPU* spu, double adress)
 {
-	stack_push(&spu->return_stack, spu->prog_counter + 2);
+	stack_push(&spu->return_stack, spu->prog_counter);
 
 	spu->prog_counter = (size_t) adress;
 	//Проверка на адрес
@@ -228,6 +228,7 @@ int input(SPU* spu, double empty_arg)
 
 	double val = NAN;
 	scanf("%lg", &val);
+	printf("input val = %lg\n", val);
 
 	stack_push(&spu->main_stack, val);
 

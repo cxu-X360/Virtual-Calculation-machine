@@ -144,6 +144,33 @@ void print_array(double* arr, size_t size)
 	putchar('\n');
 }
 
+int dump_spu(SPU* spu)
+{
+		for (int i = 0; i < spu->code_segment_size; i++)
+		{
+			if (i == spu->prog_counter) putchar(' ');
+
+			printf("%2d,", i);
+		}
+		putchar('\n');
+
+		for (int i = 0; i < spu->code_segment_size; i++)
+		{
+			if (i == spu->prog_counter)
+			{
+				putchar('*');
+			}
+
+			printf("%2lg,", spu->code_segment[i]);
+		}
+		putchar('\n');
+
+		printf("reg0 = [%lg], reg1 = [%lg], reg2 = [%lg],\nreg3 = [%lg], reg4 = [%lg], reg5 = [%lg]\n", spu->registers[0], spu->registers[1],spu->registers[2],spu->registers[3],spu->registers[4],spu->registers[5]);
+		print_stack(&spu->main_stack);
+		print_stack(&spu->return_stack);
+		printf("-------------------------------------------------------------------------------------------------\n");
+}
+
 int run_programm(SPU* spu)
 {
 	int opcode = -1;
@@ -151,11 +178,15 @@ int run_programm(SPU* spu)
 
 	print_array(spu->code_segment, spu->code_segment_size);	
 
+
 	while(spu->prog_counter < spu->code_segment_size)
 	{
 		//printf("prog_counter = <%zu>", spu->prog_counter);
 		opcode = (int) spu->code_segment[spu->prog_counter];
 		arg = NAN;
+
+		printf("opcode = %d, arg = %lg\n", opcode, arg);
+		dump_spu(spu);
 
 		switch(opcode)
 		{
@@ -163,18 +194,16 @@ int run_programm(SPU* spu)
 				printf("BREAK!!\n");
 				return 0;
 
-			case COM_WITH_ARGS_FOR_SWITCH: 
+			case PUSH: case PUSHR: case POP: case JMP...JAE: case CALL: 
 				spu->prog_counter++;
 				arg = spu->code_segment[spu->prog_counter];
 		}
-
-		//printf("opcode = <%d>, arg = <%lg>\n", opcode, arg);
-
+		
 		spu->prog_counter++;
 
 		commands_arr[opcode](spu, arg);
 
-		//print_stack(&spu->main_stack);
+
 	}
 
 	fprintf(stderr, "Code segment END has been destined and programm wasn't stop by \"HLT\" command\n");

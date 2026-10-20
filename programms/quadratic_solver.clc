@@ -1,17 +1,32 @@
-in    #read values
-push 12
-push 45
-
-pop R1  #move them to reg-s
-pop R2
-pop R3
-
-pushr R1
-pushr R3
-add
+in #read input val and stored it in R1
+pop R1
+ 
+call :factorial #calculate fact and put calculated value in R2
 
 pushr R2
-sub
-
 out
 hlt
+
+:factorial 
+	pushr R1 #get val from Reg1
+	push 0
+
+	je :exit #if val = 0, return 1
+
+	push 1    #decrement R1
+	pushr R1
+	sub
+	pop R1
+
+	call :factorial #in R2 stored fact(R1 - 1)
+
+	pushr R2    # R1 * fact(R1 - 1), what is exactly fact(R1)
+	pushr R1
+	mult
+
+	pop R2 #stored it in R2
+
+	:exit       #return 1
+		push 1
+		pop R2
+		ret

@@ -15,6 +15,7 @@ enum ERRORS
 #define MAX_COMMAND_NAME_LEN  16
 #define START_SIZE_OF_TEXT  256
 #define MAX_LABEL_NUM  256
+#define MAX_LABEL_SIZE 256
 #define OBJ_COMMAND_MAX_LINE_SIZE  16
 
 #define CHECK(opcode) 			if (!strcmp(str_upper(command_name), #opcode))\
@@ -24,8 +25,15 @@ enum ERRORS
 
 typedef struct
 {
-	char* label_table;
+	char name[MAX_LABEL_SIZE];
+	size_t addres;
+} Label;
+
+typedef struct
+{
+	Label* label_table;
 	int label_counter;
+	size_t addres_for_labels;
 
 	size_t lines_num;
 	char* programm_text;
@@ -191,7 +199,7 @@ int check_arg(AContext* ctx, LContext* line_ctx)
 			case PUSH: 
 				if (sscanf(line_ctx->pointer_in_line, "%lg%n", &(line_ctx->arg), &offset) != 1)
 				{
-					fprintf(stderr, "WROND ARG <%lg> in line %zu\n", line_ctx->arg, line_ctx->line); 
+					fprintf(stderr, "WROND ARG <%lg> in line %zu\n", line_ctx->arg, line_ctx->line + 1); 
 					return TRANSLATION_ERR;
 				}
 				break;	
@@ -201,7 +209,7 @@ int check_arg(AContext* ctx, LContext* line_ctx)
 
 				if (sscanf(line_ctx->pointer_in_line, " R%d%n", &reg_num, &offset) != 1)
 				{
-					fprintf(stderr, "NO REG_NUM in line %zu\n", line_ctx->line); 
+					fprintf(stderr, "NO REG_NUM in line %zu\n", line_ctx->line + 1); 
 					return TRANSLATION_ERR;
 				}
 
@@ -209,25 +217,44 @@ int check_arg(AContext* ctx, LContext* line_ctx)
 				{
 					case 0 ... 5: break;
 					default:
-						fprintf(stderr, "WRONG REG_NUM <%d> in line %zu\n", reg_num, line_ctx->line);
+						fprintf(stderr, "WRONG REG_NUM <%d> in line %zu\n", reg_num, line_ctx->line + 1);
 						return TRANSLATION_ERR;
 				}
 
-				//line_ctx->arg = (double) reg_num;
+				line_ctx->arg = (double) reg_num;
 				printf("arg = <%lg>\n", line_ctx->arg);
 				printf("reg_num = <%d>\n", reg_num);
 				break;
 
 			case JMP...CALL:
-				size_t jump_adress = -1;
+				size_t jump_addres = -1;
+				char arg_label[256] = {};
 
-				if(sscanf(line_ctx->pointer_in_line, " %zu%n", &jump_adress, &offset) != 1)
+				if (sscanf(line_ctx->pointer_in_line, " :%s%n", arg_label, &offset) == 1)
 				{
-					fprintf(stderr, "WROND JUMP_ADDRES <%zu> in line %zu\n", jump_adress, line_ctx->line); 
+					int i = 0;
+
+					while (i < 256)
+					{
+						if (strcmp(arg_label, ctx->label_table[i].name) == 0)
+						{
+							line_ctx->arg = (double) ctx->label_table[i].addres;
+							break;
+						}
+
+						i++;
+					}
+				}
+				else if (sscanf(line_ctx->pointer_in_line, " %zu%n", &jump_addres, &offset) == 1)
+				{
+					line_ctx->arg = (double) jump_addres;
+				}
+				else
+				{
+					fprintf(stderr, "Wrong JUMP argument in line %zu\n>", line_ctx->line + 1);
 					return TRANSLATION_ERR;
 				}
 
-				(line_ctx->arg) = (double) jump_adress;
 				break;
 
 			case PUSHM: case POPM:
@@ -235,7 +262,7 @@ int check_arg(AContext* ctx, LContext* line_ctx)
 
 				if(sscanf(line_ctx->pointer_in_line, " [%zu]%n", &ram_adress, &offset) != 1)
 				{
-					fprintf(stderr, "WROND RAM_ADDRES <%zu> in line %zu\n", ram_adress, line_ctx->line); 
+					fprintf(stderr, "WROND RAM_ADDRES <%zu> in line %zu\n", ram_adress, line_ctx->line + 1); 
 					return TRANSLATION_ERR;
 				}
 
@@ -243,9 +270,13 @@ int check_arg(AContext* ctx, LContext* line_ctx)
 				break;
 
 			//case JMP...CALL
-		}
+
+				default: ctx->addres_for_labels--;
+
+			}
 	//printf("offset in chaeck_arg = <%d>\n", offset);
 	line_ctx->pointer_in_line += offset;
+	ctx->addres_for_labels++;
 	FUNC_END
 	return 0;
 }
@@ -260,7 +291,6 @@ int check_trash(char* str)
 	while(str[i] != '#' && str[i] != '\n' && str[i] != '\0')
 	{
 		if (isspace(str[i++])) continue;
-
 
 		return -1;
 	}
@@ -280,9 +310,33 @@ bool is_empty(char* str)
 	return true;
 }
 
+int set_label(AContext* ctx, LContext* line_ctx)
+{
+	FUNC_START
+
+	(ctx->label_table)[ctx->label_counter].addres = ctx->addres_for_labels;
+
+	char label_name[MAX_LABEL_SIZE] = {};
+	if (sscanf(line_ctx->pointer_in_line, " :%s", label_name) != 1)
+	{
+		fprintf(stderr, "NO LABEL NAME in string\n");
+		return TRANSLATION_ERR;
+	}
+
+	strncpy((ctx->label_table)[ctx->label_counter].name, label_name, MAX_LABEL_SIZE);
+	ctx->label_counter++;
+
+	printf("label_counter = %d, label_addres = [%zu], label_name = <%s>\n", ctx->label_counter, ctx->addres_for_labels, label_name);
+
+	FUNC_END
+	return 0;
+}
+
 int translation(AContext* ctx)
 {
 	FUNC_START
+
+	printf("lines_num = <%zu>\n", ctx->lines_num);
 
 	for (size_t line = 0; line < ctx->lines_num; line++)
 	{
@@ -292,39 +346,41 @@ int translation(AContext* ctx)
 		 						 .arg = NAN};
 		int offset = 0;
 
-		if(*line_ctx.command_name == '\n') continue;
+		if (*line_ctx.command_name == '\n') continue;
 
-		//printf("cur_line = <%s>\n", line_ctx.pointer_in_line);
+		printf("cur_line = <%s>\n", line_ctx.pointer_in_line);
 
-		if(sscanf(line_ctx.pointer_in_line, "%s%n", line_ctx.command_name, &offset) != 1) continue;
-		//printf("cur comman_name = <%s>\n", line_ctx.command_name);
+		if (sscanf(line_ctx.pointer_in_line, "%s%n", line_ctx.command_name, &offset) != 1) continue;
+		printf("cur comman_name = <%s>\n", line_ctx.command_name);
 
+		if (line_ctx.pointer_in_line[0] == '#') continue;
 
+		if (line_ctx.pointer_in_line[0] == ':') {set_label(ctx, &line_ctx); continue;}
 
-		if((line_ctx.opcode = check_command(line_ctx.command_name)) < 0) 
+		if ((line_ctx.opcode = check_command(line_ctx.command_name)) < 0) 
 		{
-			fprintf(stderr, "WROND COMMAND <%s> in line %zu\n", line_ctx.command_name, line); 
+			fprintf(stderr, "WROND COMMAND <%s> in line %zu\n", line_ctx.command_name, line + 1); 
 			return TRANSLATION_ERR;
 		}
-		//printf("opcode in translation = <%d>\n", line_ctx.opcode);
+		ctx->addres_for_labels++;
+		printf("addres_for_labels = %zu\n", ctx->addres_for_labels);
+
+		printf("opcode in translation = <%d>\n", line_ctx.opcode);
 		line_ctx.pointer_in_line += offset + 1;
 
 		if (check_arg(ctx, &line_ctx) < 0)
 		{
-			fprintf(stderr, "WROND ARGUMENT in line %zu\n", line_ctx.line); 
+			fprintf(stderr, "WROND ARGUMENT in line %zu\n", line_ctx.line + 1); 
 			return TRANSLATION_ERR;
 		}
 
 		if (check_trash(line_ctx.pointer_in_line))
 		{
-			fprintf(stderr, "WRONG EXPRESSION in line %zu\n", line_ctx.line); 
+			fprintf(stderr, "WRONG EXPRESSION in line %zu\n", line_ctx.line + 1); 
 			return TRANSLATION_ERR;
 		}
-
-		
-
 		ctx->obj_text_pointer += sprintf(ctx->obj_text_pointer, (isnan(line_ctx.arg)) ? "%d\n" : "%d %lg\n" , line_ctx.opcode, line_ctx.arg);
-		//printf("obj_text = <%s>\n", ctx->obj_text);
+		printf("obj_text = <%s>\n", ctx->obj_text);
 	}
 
 	FUNC_END
@@ -362,14 +418,23 @@ void free_context(AContext* ctx)
 	free(ctx->programm_text);
 	free(ctx->prog_line_pointers);
 	free(ctx->obj_text);
+	//free(ctx->label_table); //ПОЧЕМУ ТО НЕ РАБОТАЕТ И ЗАВИСАЕТ
 	FUNC_END
+}
+
+void part_free(AContext* ctx)
+{
+	free(ctx->obj_text);
+	ctx->obj_text = (char*) calloc(ctx->obj_text_size, sizeof(char));
+	ctx->obj_text_pointer = ctx->obj_text;
+
+	ctx->label_counter = 0;
+	ctx->addres_for_labels = 0;
 }
 
 int main(int argc, char* argv[])
 {
 	FUNC_START
-
-
 
 	if (argc > 3)
 	{
@@ -380,12 +445,13 @@ int main(int argc, char* argv[])
 	const char* programm_file_name = argv[1];
 
 	
-	char* objective_file_name = (argc == 2) ? strcat(argv[1], "txt") : argv[2];
+	char* objective_file_name =  argv[2];
 
 	char* programm_text = NULL;
 
-	AContext context = {.label_table = calloc(MAX_LABEL_NUM, sizeof(size_t)),
+	AContext context = {.label_table = (Label*) calloc(MAX_LABEL_NUM, sizeof(Label)),
 						.label_counter = 0,
+						.addres_for_labels = 0,
 
 
 						.lines_num = read_programm_file(programm_file_name, &(programm_text)),
@@ -402,6 +468,14 @@ int main(int argc, char* argv[])
 		fprintf(stderr, "TRANSLATION_ERR\n");
 		return TRANSLATION_ERR;
 	}
+
+	for (int i = 0; i < MAX_LABEL_SIZE; i++)
+	{
+		printf("i = %d) label.name = <%s>, label.addres = %zu\n", i,  context.label_table[i].name, context.label_table[i].addres);
+	}
+
+	part_free(&context); //Частичное овобождение перед повторным ассемблтрованием
+	translation(&context);
 
 	//printf("obj_text = <%s>\n", context.obj_text);
 
