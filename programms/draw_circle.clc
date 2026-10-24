@@ -1,0 +1,88 @@
+push 10
+pop R5 #Reg5 is shade
+
+push 2
+pop R3 #Reg3 is scale
+
+push 0
+pop R0 #in Reg0 is counter
+
+push -1
+pop R1 #Reg1 is y-cord
+
+:next_line
+	push 0.15
+	pushr R5
+	sub #decrement shade
+	pop R5
+
+	pushr R1
+	push 1
+	add
+	pop R1 #increment R1 <=> +1 line
+
+	push 0
+	pop R2 #Reg2 is x-cord
+
+	:next_cell
+		pushr R0
+		push 5000 #ram limit
+		je :stop #if ram size had been reached
+
+		pushr R2 
+		push 50 #go to next line if x = 50 * 2
+		pushr R3
+		mult
+		je :next_line
+
+		pushr R3
+		push 50
+		div # /scale
+		pushr R1
+		sub
+		sqr #(y-25)^2
+		pushr R3
+		sqr
+		mult # (scale * (y - 25))^2
+
+		push 25
+		pushr R3
+		mult
+		pushr R2
+		sub
+		sqr #(x-50)^2
+
+		add
+		sqrt #dist from center
+
+		push 50  #max dist form centre
+
+		call :draw_pixel #draw pixel func
+
+		pushr R2
+		push 1
+		add
+		pop R2 #increment x
+
+		pushr R0
+		push 1
+		add
+		pop R0 #increment counter
+
+		jmp :next_cell
+
+:stop
+	draw 
+	hlt
+
+:draw_pixel 
+	ja :fill #if 0.97*50 > dist, then fill pixel
+	ret
+
+	:fill
+		pushr R5 
+		popm [R0]
+		ret
+
+
+

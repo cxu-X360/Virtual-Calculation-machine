@@ -1,4 +1,4 @@
-	#ifndef PROCCESOR_H
+#ifndef PROCCESOR_H
 #define PROCCESOR_H
 
 #include <stdio.h>
@@ -45,13 +45,12 @@ enum OPCODES
 	PUSHM = 21,
 	POPM = 22,
 
+	DRAW = 23,
+
 	OPCODES_COUNT,
 };
 
 //ГЕнерировать файл текстовйый
-
-#define COM_WITH_ARGS_FOR_SWITCH PUSH: case PUSHR: case POP: case JMP...JAE: case CALL
-
 #define NUM_REGISTERS 6
 
 typedef struct 
@@ -64,11 +63,18 @@ typedef struct
 
 	double registers[NUM_REGISTERS];
 
+	double* RAM;
+
 	struct Stack return_stack;
 } SPU;
 
 const size_t START_CAPACITY = 32;
 const size_t MAX_SIZE_CODE_SEGMENT = 8192; //TODO dynamic resize
+
+//SCREEN
+const size_t SIZE_X = 100;
+const size_t SIZE_Y = 50;
+const size_t RAM_SIZE = SIZE_X * SIZE_Y;
 
 #include "commands.c"
 
@@ -97,7 +103,12 @@ int (*commands_arr[])(SPU* spu, double arg) = {
 			 							 return_,  //18
 
 			 							 input,   //19
-										 output   //20
+										 output,   //20
+
+										 push_from_ram, //21 
+										 pop_to_ram, //22
+
+										 draw //23
 									     };   
 
 

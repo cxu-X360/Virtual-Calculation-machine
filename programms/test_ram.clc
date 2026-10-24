@@ -1,0 +1,56 @@
+push 0
+pop R0
+
+in
+pop R1
+
+call :check
+je :label_1
+
+call :check
+jb :label_2
+
+call :check
+ja :label_3
+
+:backward
+
+out
+hlt
+
+:label_1
+	push 1
+	push 2
+	add
+
+	popm [34] #34-ая ячейка памяти
+	pushm [34]
+
+	jmp :backward
+
+:label_2
+	push 3
+	push 4
+	mult
+
+	popm [0] 
+	pushm [0]
+
+	jmp :backward
+
+:label_3
+	push -1.2
+	push 1
+	mult
+
+	popm [8]
+	pushm [8]
+
+	jmp :backward
+
+:check
+	pushr R0
+	pushr R1
+	ret
+
+

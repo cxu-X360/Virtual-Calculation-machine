@@ -9,7 +9,6 @@ enum ERRORS
 	READ_FILE_ERROR = -5,
 };
 
-
 int text_beater(char** text_ptr, char* string_pointers[]) //Разделение всего текста  на строки и занесение в массив указателей на строки string_pointers[]
 {
 	FUNC_START
@@ -116,7 +115,7 @@ size_t read_programm(const char* programm_file_name, double* code_segment)
 
 		switch (opcode)
 		{
-			case COM_WITH_ARGS_FOR_SWITCH:
+			case PUSH: case PUSHR: case POP: case POPM: case PUSHM: case JMP...JAE: case CALL:
 				code_segment[i] = arg;
 				//printf("arg = <%lg>(%lg), ", arg, code_segment[i]);
 				i++;
@@ -168,6 +167,14 @@ int dump_spu(SPU* spu)
 		printf("reg0 = [%lg], reg1 = [%lg], reg2 = [%lg],\nreg3 = [%lg], reg4 = [%lg], reg5 = [%lg]\n", spu->registers[0], spu->registers[1],spu->registers[2],spu->registers[3],spu->registers[4],spu->registers[5]);
 		print_stack(&spu->main_stack);
 		print_stack(&spu->return_stack);
+
+		puts("\nRAM: [");
+		for (int i = 0; i < 100; i++)
+		{
+			printf("[%d]:<%lg>, ", i, spu->RAM[i]);
+		}
+		putchar(']');
+
 		printf("-------------------------------------------------------------------------------------------------\n");
 }
 
@@ -185,8 +192,7 @@ int run_programm(SPU* spu)
 		opcode = (int) spu->code_segment[spu->prog_counter];
 		arg = NAN;
 
-		printf("opcode = %d, arg = %lg\n", opcode, arg);
-		dump_spu(spu);
+		//dump_spu(spu);
 
 		switch(opcode)
 		{
@@ -194,16 +200,17 @@ int run_programm(SPU* spu)
 				printf("BREAK!!\n");
 				return 0;
 
-			case PUSH: case PUSHR: case POP: case JMP...JAE: case CALL: 
+			case PUSH: case PUSHR: case POP: case POPM: case PUSHM: case JMP...JAE: case CALL: 
 				spu->prog_counter++;
 				arg = spu->code_segment[spu->prog_counter];
 		}
 		
 		spu->prog_counter++;
 
+		//printf("opcode = %d, arg = %lg\n\n\n\n", opcode, arg);
+		
+
 		commands_arr[opcode](spu, arg);
-
-
 	}
 
 	fprintf(stderr, "Code segment END has been destined and programm wasn't stop by \"HLT\" command\n");
@@ -222,6 +229,8 @@ int spu_init(SPU* spu, const char* object_file_name)
 	double _regs[NUM_REGISTERS] = {};
 	memcpy(spu->registers, _regs, NUM_REGISTERS);
 
+	spu->RAM = (double*) calloc(RAM_SIZE, sizeof(double));
+
 	struct Stack return_stack = {};
 	stack_init(&return_stack, START_CAPACITY);
 	spu->return_stack = return_stack;
@@ -239,6 +248,8 @@ int spu_destroy(SPU* spu)
 
 	double _regs[NUM_REGISTERS] = {};
 	memcpy(spu->registers, _regs, NUM_REGISTERS);
+
+	free(spu->RAM);
 
 	stack_destroy(&(spu->return_stack));
 }

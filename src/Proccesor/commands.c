@@ -1,6 +1,6 @@
 bool dbl_eq(double a, double b)
 {
-	return fabs(a - b) < 10e6; 
+	return fabs(a - b) < 10e-5; 
 }
 
 int hatl(SPU* spu, double empty_arg) //0
@@ -13,6 +13,25 @@ int hatl(SPU* spu, double empty_arg) //0
 int push(SPU* spu, double arg) //1
 {
 	stack_push(&spu->main_stack, arg);
+
+	return 0;
+}
+
+int push_from_ram(SPU* spu, double reg_num)
+{
+	size_t ram_adress = (size_t) spu->registers[(int) reg_num];
+	stack_push(&spu->main_stack, spu->RAM[ram_adress]);
+
+	return 0;
+}
+
+int pop_to_ram(SPU* spu, double reg_num)
+{
+	double val = NAN;
+	size_t ram_adress = (size_t) spu->registers[(int) reg_num];
+
+	stack_pop(&spu->main_stack, &val);
+	spu->RAM[ram_adress] = val;
 
 	return 0;
 }
@@ -132,7 +151,7 @@ int jump_eq(SPU* spu, double adress)
 	stack_pop(&spu->main_stack, &a);
 	stack_pop(&spu->main_stack, &b);
 	
-	if (dbl_eq(a, b)) spu->prog_counter = (size_t) adress;
+	if (dbl_eq(a, b)) {printf("jump equal is working a = <%lg>, b = <%lg>\n", a, b); spu->prog_counter = (size_t) adress;}
 	//Проверка на адрес
 	return 0;
 }
@@ -243,6 +262,33 @@ int output(SPU* spu, double empty_arg) //6
 	stack_pop(&spu->main_stack, &val);
 
 	printf("OUTPUT :: ----->>>>> <%lg> <<<<<-------\n", val);
+
+	return 0;
+}
+
+int draw(SPU* spu, double empty_arg)
+{
+	char* shades = " .:-=+*#%@";
+	int shade = -1;
+
+	for (int y = 0; y < SIZE_Y; y++)
+	{
+		for (int x = 0; x < SIZE_X; x++)
+		{
+			switch(shade = (int) spu->RAM[y * SIZE_X  + x])
+			{
+				case 0 ... 9:
+					putchar(shades[shade]);
+					break;
+
+				default:
+					putchar(' ');
+					break;
+			}
+		}
+
+		putchar('\n');
+	}
 
 	return 0;
 }

@@ -183,6 +183,7 @@ int check_command(char* command_name)
 	CHECK(OUT)
 	CHECK(PUSHM)
 	CHECK(POPM)
+	CHECK(DRAW)
 
 	FUNC_END
 	return TRANSLATION_ERR;
@@ -222,19 +223,19 @@ int check_arg(AContext* ctx, LContext* line_ctx)
 				}
 
 				line_ctx->arg = (double) reg_num;
-				printf("arg = <%lg>\n", line_ctx->arg);
-				printf("reg_num = <%d>\n", reg_num);
+				//printf("arg = <%lg>\n", line_ctx->arg);
+				//printf("reg_num = <%d>\n", reg_num);
 				break;
 
 			case JMP...CALL:
 				size_t jump_addres = -1;
-				char arg_label[256] = {};
+				char arg_label[MAX_LABEL_SIZE] = {};
 
 				if (sscanf(line_ctx->pointer_in_line, " :%s%n", arg_label, &offset) == 1)
 				{
 					int i = 0;
 
-					while (i < 256)
+					while (i < MAX_LABEL_SIZE)
 					{
 						if (strcmp(arg_label, ctx->label_table[i].name) == 0)
 						{
@@ -258,15 +259,26 @@ int check_arg(AContext* ctx, LContext* line_ctx)
 				break;
 
 			case PUSHM: case POPM:
-				size_t ram_adress = -1;
+				reg_num = -1;
 
-				if(sscanf(line_ctx->pointer_in_line, " [%zu]%n", &ram_adress, &offset) != 1)
+				if ((sscanf(line_ctx->pointer_in_line, " [R%d]%n", &reg_num, &offset) == 1))
 				{
-					fprintf(stderr, "WROND RAM_ADDRES <%zu> in line %zu\n", ram_adress, line_ctx->line + 1); 
+					switch(reg_num)
+					{
+						case 0 ... 5: break;
+						default:
+							fprintf(stderr, "WRONG REG_NUM <%d> in line %zu\n", reg_num, line_ctx->line + 1);
+							return TRANSLATION_ERR;
+					}
+
+					(line_ctx->arg) = (double) reg_num;
+				}
+				else
+				{
+					fprintf(stderr, "Wrong RAM using. Try pushm/popm [R(0..5)]\n");
 					return TRANSLATION_ERR;
 				}
-
-				(line_ctx->arg) = (double) ram_adress;
+				
 				break;
 
 			//case JMP...CALL
@@ -326,7 +338,7 @@ int set_label(AContext* ctx, LContext* line_ctx)
 	strncpy((ctx->label_table)[ctx->label_counter].name, label_name, MAX_LABEL_SIZE);
 	ctx->label_counter++;
 
-	printf("label_counter = %d, label_addres = [%zu], label_name = <%s>\n", ctx->label_counter, ctx->addres_for_labels, label_name);
+	//printf("label_counter = %d, label_addres = [%zu], label_name = <%s>\n", ctx->label_counter, ctx->addres_for_labels, label_name);
 
 	FUNC_END
 	return 0;
@@ -336,7 +348,7 @@ int translation(AContext* ctx)
 {
 	FUNC_START
 
-	printf("lines_num = <%zu>\n", ctx->lines_num);
+	//printf("lines_num = <%zu>\n", ctx->lines_num);
 
 	for (size_t line = 0; line < ctx->lines_num; line++)
 	{
@@ -348,10 +360,10 @@ int translation(AContext* ctx)
 
 		if (*line_ctx.command_name == '\n') continue;
 
-		printf("cur_line = <%s>\n", line_ctx.pointer_in_line);
+		//printf("cur_line = <%s>\n", line_ctx.pointer_in_line);
 
 		if (sscanf(line_ctx.pointer_in_line, "%s%n", line_ctx.command_name, &offset) != 1) continue;
-		printf("cur comman_name = <%s>\n", line_ctx.command_name);
+		//printf("cur comman_name = <%s>\n", line_ctx.command_name);
 
 		if (line_ctx.pointer_in_line[0] == '#') continue;
 
@@ -363,9 +375,9 @@ int translation(AContext* ctx)
 			return TRANSLATION_ERR;
 		}
 		ctx->addres_for_labels++;
-		printf("addres_for_labels = %zu\n", ctx->addres_for_labels);
+		//printf("addres_for_labels = %zu\n", ctx->addres_for_labels);
 
-		printf("opcode in translation = <%d>\n", line_ctx.opcode);
+		//printf("opcode in translation = <%d>\n", line_ctx.opcode);
 		line_ctx.pointer_in_line += offset + 1;
 
 		if (check_arg(ctx, &line_ctx) < 0)
@@ -380,7 +392,7 @@ int translation(AContext* ctx)
 			return TRANSLATION_ERR;
 		}
 		ctx->obj_text_pointer += sprintf(ctx->obj_text_pointer, (isnan(line_ctx.arg)) ? "%d\n" : "%d %lg\n" , line_ctx.opcode, line_ctx.arg);
-		printf("obj_text = <%s>\n", ctx->obj_text);
+		//printf("obj_text = <%s>\n", ctx->obj_text);
 	}
 
 	FUNC_END
@@ -471,7 +483,7 @@ int main(int argc, char* argv[])
 
 	for (int i = 0; i < MAX_LABEL_SIZE; i++)
 	{
-		printf("i = %d) label.name = <%s>, label.addres = %zu\n", i,  context.label_table[i].name, context.label_table[i].addres);
+		//printf("i = %d) label.name = <%s>, label.addres = %zu\n", i,  context.label_table[i].name, context.label_table[i].addres);
 	}
 
 	part_free(&context); //Частичное овобождение перед повторным ассемблтрованием
@@ -487,7 +499,7 @@ int main(int argc, char* argv[])
 
 	free_context(&context);
 
-	system(objective_file_name);
+	//system(objective_file_name);
 	FUNC_END
 
 	return 0;

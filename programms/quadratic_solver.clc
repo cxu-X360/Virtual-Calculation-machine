@@ -3,7 +3,7 @@ pop R1
  
 call :factorial #calculate fact and put calculated value in R2
 
-pushr R2
+pushr R1
 out
 hlt
 
@@ -11,7 +11,7 @@ hlt
 	pushr R1 #get val from Reg1
 	push 0
 
-	je :exit #if val = 0, return 1
+	je :exist #if val = 0, return 1
 
 	push 1    #decrement R1
 	pushr R1
@@ -27,6 +27,4 @@ hlt
 	pop R2 #stored it in R2
 
 	:exit       #return 1
-		push 1
-		pop R2
 		ret

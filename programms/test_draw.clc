@@ -1,0 +1,12 @@
+push 1
+pop R0
+push 2
+popm [R0] #comment
+
+push 2
+pop R1
+push 67
+popm [R1]
+
+draw
+hlt
